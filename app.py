@@ -1,6 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 import os
+
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'index.html')
 
 app = Flask(__name__)
 
