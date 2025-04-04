@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>远程实验平台</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2rem;
+    }
+    video {
+      width: 60%;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 1rem;
+      margin: 0.5rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>远程实验平台</h1>
+  <p>请点击下方按钮开始录像，完成后视频将被上传。</p>
+
+  <video id="preview" autoplay muted></video><br />
+  <button id="startBtn">开始录像</button>
+  <button id="stopBtn" disabled>停止录像并上传</button>
+  <p id="status"></p>
+
+  <script>
+    const preview = document.getElementById('preview');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const status = document.getElementById('status');
+
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      preview.srcObject = stream;
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.ondataavailable = function (e) {
+        if (e.data.size > 0) {
+          recordedChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = function () {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        uploadVideo(blob);
+      };
+    }
+
+    function uploadVideo(blob) {
+      status.textContent = '正在上传视频...';
+      const formData = new FormData();
+      formData.append('video', blob, 'experiment.webm');
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData,
+      })
+        .then((res) => res.text())
+        .then((msg) => {
+          status.textContent = '上传成功！谢谢参与！';
+        })
+        .catch((err) => {
+          console.error(err);
+          status.textContent = '上传失败，请稍后重试。';
+        });
+    }
+
+    startBtn.onclick = () => {
+      recordedChunks = [];
+      mediaRecorder.start();
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      status.textContent = '正在录像中...';
+    };
+
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      status.textContent = '录制完成，正在处理...';
+    };
+
+    setupCamera();
+  </script>
+</body>
+</html>
